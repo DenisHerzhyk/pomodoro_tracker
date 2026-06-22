@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import axios from "axios";
+import { getAllCreatedTasks } from "./services/task/getAllIncompleteTasksService";
+import { saveBeforeSwitchService } from "./services/timer/saveBeforeSwitchService";
 
 const modes = ["pomodoro", "shortBreak", "longBreak"];
 type Mode = (typeof modes)[number];
@@ -11,6 +14,20 @@ const Timer = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [mode, setMode] = useState<Mode>("pomodoro");
 
+  useEffect(() => {
+    const finishedTimer = async () => {
+      await axios.patch(
+        "http://localhost:8000/api/py/finished_timer",
+        {},
+        { withCredentials: true },
+      );
+    };
+
+    if (minutes === 0 && secs === 0) {
+      finishedTimer();
+    }
+  }, []);
+
   const handlePomodoro = () => {
     setMode("pomodoro");
     setSeconds(60 * 25);
@@ -20,7 +37,13 @@ const Timer = () => {
       setIsRunning(false);
     }
   };
-  const handleShortBreak = () => {
+  const handleShortBreak = async () => {
+    if (isRunning && mode === "pomodoro") {
+      const elapsed = 60 * 25 - seconds;
+
+      saveBeforeSwitchService(elapsed);
+    }
+
     setMode("shortBreak");
     setSeconds(60 * 5);
     if (intervalRef.current) {
@@ -29,7 +52,13 @@ const Timer = () => {
       setIsRunning(false);
     }
   };
-  const handleLongBreak = () => {
+  const handleLongBreak = async () => {
+    if (isRunning && mode === "pomodoro") {
+      const elapsed = 60 * 25 - seconds;
+
+      saveBeforeSwitchService(elapsed);
+    }
+
     setMode("longBreak");
     setSeconds(60 * 15);
     if (intervalRef.current) {
@@ -81,6 +110,7 @@ const Timer = () => {
   };
   let minutes = Math.floor(seconds / 60);
   let secs = seconds % 60;
+
   return (
     <div className=" flex flex-col font-mono text-7xl px-13 pb-20 pt-10 bg-gray-700 rounded-lg w-full justify-center items-center">
       <ul className="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box">

@@ -27,12 +27,16 @@ async def on_startup():
 @app.get("/api/py/incomplete_tasks")
 async def read_incomplete_tasks(session: SessionDep) -> List[Task]:
     tasks = session.exec(select(Task).where(Task.is_completed == False)).all()
+    if not tasks:
+        raise HTTPException(status_code=404, detail="Tasks not found")
     return tasks
 
 #read complete task 
 @app.get("/api/py/complete_tasks")
 async def read_complete_tasks(session:SessionDep) -> List[Task]:
     tasks = session.exec(select(Task).where(Task.is_completed == True)).all()
+    if not tasks:
+        raise HTTPException(status_code=404, detail="Tasks not found")
     return tasks
 
 #get task 
@@ -66,7 +70,6 @@ async def create_task(task: Task, session: SessionDep) -> Task:
 #toggle task
 @app.patch("/api/py/task/{task_id}")
 async def toggle_task(task_id: int, session: SessionDep) -> Task:
-    print("WE ARE IN PATCH")
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail=f"The task id '{task_id}' was not found")
@@ -75,14 +78,41 @@ async def toggle_task(task_id: int, session: SessionDep) -> Task:
     session.add(task)
     session.commit()
     session.refresh(task)
-    print("FINISHED THE PATCH")
     return task
 
-# @app.post("/api/py/task/{task.id}")
-# async def create_task():
-#     return "POST"
+#update all tasks once timer finished
+@app.patch("/api/py/finished_timer")
+async def finished_timer(session: SessionDep) -> List[Task]:
+    pomodoro_minutes = 25
+    tasks = session.exec(select(Task).where(Task.is_completed == False)).all()
 
+    if not tasks:
+        raise HTTPException(status_code=404, detail="Tasks not found")
+    
+    for task in tasks:
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        task.total_work_seconds += pomodoro_minutes
+        session.add(task)
+        session.commit()
+        session.refresh(task)
 
-# @app.post("/api/py/push_record/{timer.id}")
-# async def push_timer_record():
-#     return "POST"
+    return tasks
+
+#update all tasks before switching from pomodoro
+@app.patch("/api/py/save_before_switch")
+async def save_before_switch(elapsed: int, session:SessionDep) -> List[Task]:
+    tasks = session.exec(select(Task).where(Task.is_completed == False)).all()
+
+    if not tasks:
+        raise HTTPException(status_code=404, detail="Tasks not found")
+
+    for task in tasks:
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        task.total_work_seconds += elapsed
+        session.add(task)
+        session.commit()
+        session.refresh(task)
+
+    return tasks

@@ -4,19 +4,25 @@ import React, { useEffect, useRef, useState } from "react";
 import TaskItem from "./task/TaskItem";
 import { CirclePlus } from "lucide-react";
 import axios from "axios";
+import { handleTaskCreate } from "./services/task/taskCreateService";
+import { getAllCreatedTasks } from "./services/task/getAllIncompleteTasksService";
+import { getAllCompleteTasks } from "./services/task/getAllCompleteTasksService";
+import { handleTaskDelete } from "./services/task/taskDeleteService";
 
 const TaskList = () => {
-  const [clicked, setClicked] = useState(false);
+  const [expandDescr, setExpandDesk] = useState(false);
+  const [incompTasks, setIncompTasks] = useState([]);
+  const [compTasks, setCompTasks] = useState([]);
   const [taskTitle, setTaskTitle] = useState<string | null>(null);
   const [taskNote, setTaskNote] = useState<string | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!clicked) return;
+    if (!expandDescr) return;
 
     const handleClickOutside = (event: MouseEvent) => {
       if (heroRef.current && !heroRef.current.contains(event.target as Node)) {
-        setClicked(false);
+        setExpandDesk(false);
       }
     };
 
@@ -24,47 +30,54 @@ const TaskList = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [clicked]);
+  }, [expandDescr]);
 
-  const handleTaskCreate = async () => {
-    if (!taskTitle) return;
+  useEffect(() => {
+    getAllCreatedTasks(setIncompTasks);
+    getAllCompleteTasks(setCompTasks);
+  }, []);
+
+  const handleToggleComplete = async (id: number) => {
     try {
-      const response = await axios.post(
-        "http://localhost:8000/api/py/task",
+      const response = await axios.get(
+        `http://localhost:8000/api/py/task/${id}`,
         {
-          title: taskTitle,
-          description: taskNote,
-          is_completed: true,
-          total_work_seconds: 0,
+          withCredentials: true,
         },
-        { withCredentials: true },
       );
-
-      console.log("Task created:", response.data);
-      setClicked(false);
-    } catch (err) {
-      console.error("Failed to create task:", err);
-    }
-  };
-
-  const currentTasks = async () => {
-    try {
-      const response = await axios.get("http://localhost:8000/api/py/task", {
-        withCredentials: true,
+      const data = response.data;
+      await axios.patch(`http://localhost:8000/api/py/task/${id}`, {
+        id: id,
+        is_completed: !data.is_completed,
       });
-      console.log("Tasks received:", response.data);
+
+      getAllCreatedTasks(setIncompTasks);
+      getAllCompleteTasks(setCompTasks);
     } catch (err) {
-      console.error("Failed to receive tasks:", err);
+      console.error("Failed to find or update the task: ", err);
     }
   };
+
   return (
     <div className="mt-20">
       <div className="in-progress">
         <h2>Tasks in progress</h2>
         <ul className="list bg-gray-700 rounded-box shadow-md flex flex-col gap-3 mt-5">
-          <TaskItem />
+          {incompTasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              id={task.id}
+              title={task.title}
+              description={task.description}
+              is_completed={task.is_completed}
+              onToggleComplete={handleToggleComplete}
+              onDelete={() =>
+                handleTaskDelete(task.id, setIncompTasks, setCompTasks)
+              }
+            />
+          ))}
         </ul>
-        {clicked ? (
+        {expandDescr ? (
           <div className="hero mt-10" ref={heroRef}>
             <div className=" flex-col lg:flex-row-reverse w-full">
               <div className="card bg-gray-700 w-full ">
@@ -91,7 +104,15 @@ const TaskList = () => {
                     <button className="btn btn-outline">Cancel</button>
                     <button
                       className="btn btn-outline btn-success"
-                      onClick={handleTaskCreate}
+                      onClick={() =>
+                        handleTaskCreate(
+                          taskTitle,
+                          taskNote,
+                          setExpandDesk,
+                          setIncompTasks,
+                          setCompTasks,
+                        )
+                      }
                     >
                       Save
                     </button>
@@ -103,7 +124,7 @@ const TaskList = () => {
         ) : (
           <button
             className="btn btn-dash btn-warning py-7 w-full mt-10"
-            onClick={() => setClicked(true)}
+            onClick={() => setExpandDesk(true)}
           >
             <CirclePlus />
             Add Task
@@ -114,13 +135,21 @@ const TaskList = () => {
       <div className="done-tasks mt-10">
         <h2>Completed tasks</h2>
         <ul className="list bg-gray-700 rounded-box shadow-md flex flex-col gap-3 mt-5">
-          <TaskItem />
+          {compTasks.map((task) => (
+            <TaskItem
+              key={task.id}
+              id={task.id}
+              title={task.title}
+              description={task.description}
+              is_completed={task.is_completed}
+              onToggleComplete={handleToggleComplete}
+              onDelete={() =>
+                handleTaskDelete(task.id, setIncompTasks, setCompTasks)
+              }
+            />
+          ))}
         </ul>
       </div>
-
-      <button onClick={currentTasks} className="btn btn-secondary">
-        Show Tasks in log
-      </button>
     </div>
   );
 };

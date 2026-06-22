@@ -1,25 +1,40 @@
 "use client";
 
 import React, { useState } from "react";
+import { handleTaskDelete } from "../services/task/taskDeleteService";
 
-const TaskItem = () => {
-  const [isChecked, setIsChecked] = useState(false);
+const TaskItem = ({
+  id,
+  title,
+  description,
+  is_completed,
+  onToggleComplete,
+  onDelete,
+}: {
+  id: number;
+  title: string;
+  description: string;
+  is_completed: boolean;
+  onToggleComplete: (id: number) => void;
+  onDelete: () => void;
+}) => {
   const [open, setOpen] = useState(false);
   return (
     <li className="list-row items-center">
       <div
-        className={`text-4xl font-thin tabular-nums ${isChecked ? "text-green-300 line-through" : "text-gray-400"}`}
+        className={`text-4xl font-thin tabular-nums ${is_completed ? "text-green-300" : "text-orange-300"}`}
       >
-        01
+        {(id + 1)?.toString().padStart(2, "0")}
       </div>
       <div className="list-col-grow">
-        <div className={`${isChecked && "line-through"} text-lg font-semibold`}>
-          Task 1
+        <div
+          className={`${is_completed && "line-through"} text-lg font-semibold`}
+        >
+          {title}
         </div>
-        <div className="max-w-[200px]">
+        <div className="max-w-50">
           <p className={`text-gray-300 ${open ? "" : "truncate"}`}>
-            This is task description....This is task description....This is task
-            description....
+            {description}
           </p>
 
           <button
@@ -34,10 +49,17 @@ const TaskItem = () => {
         <label className="label">
           <input
             type="checkbox"
-            className="checkbox checkbox-success"
-            onChange={() => setIsChecked(!isChecked)}
-            checked={isChecked}
+            className={`checkbox ${is_completed ? "checkbox-success" : "checkbox-warning"}`}
+            onChange={() => onToggleComplete(id)}
+            checked={is_completed}
           />
+          <br />
+          <button
+            className="bg-red-500 px-4 h-[24px] text-white font-semibold rounded-lg"
+            onClick={onDelete}
+          >
+            Delete
+          </button>
         </label>
       </fieldset>
     </li>
