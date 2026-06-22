@@ -3,32 +3,36 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { getAllCreatedTasks } from "./services/task/getAllIncompleteTasksService";
-import { saveBeforeSwitchService } from "./services/timer/saveBeforeSwitchService";
 
-const modes = ["pomodoro", "shortBreak", "longBreak"];
-type Mode = (typeof modes)[number];
-
-const Timer = () => {
+const Timer = ({
+  onWorkSecondsUpdate,
+  onBreakSecondsUpdate,
+  setMode,
+  mode,
+}) => {
   const [seconds, setSeconds] = useState(60 * 25);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [mode, setMode] = useState<Mode>("pomodoro");
 
   useEffect(() => {
-    const finishedTimer = async () => {
-      await axios.patch(
-        "http://localhost:8000/api/py/finished_timer",
-        {},
-        { withCredentials: true },
-      );
-    };
-
     if (minutes === 0 && secs === 0) {
-      finishedTimer();
+      mode === "pomodoro"
+        ? onWorkSecondsUpdate((prev) => prev + 60 * 25)
+        : mode === "shortBreak"
+          ? onBreakSecondsUpdate((prev) => prev + 60 * 5)
+          : onBreakSecondsUpdate((prev) => prev + 60 * 15);
     }
   }, []);
 
   const handlePomodoro = () => {
+    if (isRunning && ["shortBeak", "longBreak"].includes(mode)) {
+      if (mode === "shortBreak")
+        onBreakSecondsUpdate((prev) => prev + (60 * 5 - seconds));
+      else {
+        onBreakSecondsUpdate((prev) => prev + (60 * 15 - seconds));
+      }
+    }
+
     setMode("pomodoro");
     setSeconds(60 * 25);
     if (intervalRef.current) {
@@ -40,8 +44,7 @@ const Timer = () => {
   const handleShortBreak = async () => {
     if (isRunning && mode === "pomodoro") {
       const elapsed = 60 * 25 - seconds;
-
-      saveBeforeSwitchService(elapsed);
+      onWorkSecondsUpdate((prev) => prev + elapsed);
     }
 
     setMode("shortBreak");
@@ -55,8 +58,7 @@ const Timer = () => {
   const handleLongBreak = async () => {
     if (isRunning && mode === "pomodoro") {
       const elapsed = 60 * 25 - seconds;
-
-      saveBeforeSwitchService(elapsed);
+      onWorkSecondsUpdate((prev) => prev + elapsed);
     }
 
     setMode("longBreak");

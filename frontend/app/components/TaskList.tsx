@@ -9,7 +9,7 @@ import { getAllCreatedTasks } from "./services/task/getAllIncompleteTasksService
 import { getAllCompleteTasks } from "./services/task/getAllCompleteTasksService";
 import { handleTaskDelete } from "./services/task/taskDeleteService";
 
-const TaskList = () => {
+const TaskList = ({ totalWorkSeconds, totalBreakSeconds, totalSeconds }) => {
   const [expandDescr, setExpandDesk] = useState(false);
   const [incompTasks, setIncompTasks] = useState([]);
   const [compTasks, setCompTasks] = useState([]);
@@ -49,6 +49,7 @@ const TaskList = () => {
       await axios.patch(`http://localhost:8000/api/py/task/${id}`, {
         id: id,
         is_completed: !data.is_completed,
+        totalSeconds,
       });
 
       getAllCreatedTasks(setIncompTasks);

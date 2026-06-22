@@ -8,7 +8,6 @@ class Task(SQLModel, table=True):
     title: str
     description: str
     is_completed: bool = False
-    total_work_seconds: int = 0
 
 
 class TimerRecord(SQLModel, table=True):
@@ -18,5 +17,7 @@ class TimerRecord(SQLModel, table=True):
         foreign_key="task.id"
     )
     mode: str
-    duration_seconds: int
-    completed_at:datetime = Field(default_factory=datetime.utcnow)
+    working_time: int
+    break_time: int
+
+

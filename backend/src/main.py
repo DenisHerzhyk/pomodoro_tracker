@@ -2,7 +2,7 @@
 from fastapi import FastAPI, HTTPException
 from sqlmodel import select
 from .dependency import SessionDep
-from .models import Task
+from .models import Task, TimerRecord
 from typing import List
 from .db import create_db_and_tables 
 from fastapi.middleware.cors import CORSMiddleware
@@ -69,7 +69,7 @@ async def create_task(task: Task, session: SessionDep) -> Task:
 
 #toggle task
 @app.patch("/api/py/task/{task_id}")
-async def toggle_task(task_id: int, session: SessionDep) -> Task:
+async def toggle_task(task_id: int, tr: TimerRecord, totalSeconds: int, mode:int, session: SessionDep) -> dict:
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail=f"The task id '{task_id}' was not found")
@@ -78,41 +78,21 @@ async def toggle_task(task_id: int, session: SessionDep) -> Task:
     session.add(task)
     session.commit()
     session.refresh(task)
-    return task
 
-#update all tasks once timer finished
-@app.patch("/api/py/finished_timer")
-async def finished_timer(session: SessionDep) -> List[Task]:
-    pomodoro_minutes = 25
-    tasks = session.exec(select(Task).where(Task.is_completed == False)).all()
+    tr.task_id = task_id
+    tr.mode = mode
+    tr.duration_seconds = totalSeconds
+    session.add(tr)
+    session.commit()
+    session.refresh(tr)
 
-    if not tasks:
-        raise HTTPException(status_code=404, detail="Tasks not found")
-    
-    for task in tasks:
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-        task.total_work_seconds += pomodoro_minutes
-        session.add(task)
-        session.commit()
-        session.refresh(task)
+    return {
+        "task": task,
+        "timer_record": tr
+    }
 
-    return tasks
 
-#update all tasks before switching from pomodoro
-@app.patch("/api/py/save_before_switch")
-async def save_before_switch(elapsed: int, session:SessionDep) -> List[Task]:
-    tasks = session.exec(select(Task).where(Task.is_completed == False)).all()
-
-    if not tasks:
-        raise HTTPException(status_code=404, detail="Tasks not found")
-
-    for task in tasks:
-        if not task:
-            raise HTTPException(status_code=404, detail="Task not found")
-        task.total_work_seconds += elapsed
-        session.add(task)
-        session.commit()
-        session.refresh(task)
-
-    return tasks
+@app.get("/api/py/timer_records/{task_id}")
+async def get_timer_records(task_id: int, session:SessionDep) -> List[TimerRecord]:
+    timer_records = session.exec(select(TimerRecord).where(TimerRecord.task_id == task_id)).all()
+    return timer_records

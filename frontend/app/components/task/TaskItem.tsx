@@ -1,7 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import { handleTaskDelete } from "../services/task/taskDeleteService";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+
+type TimerRecord = {
+  id: number;
+  task_id: number;
+  mode: string;
+  duration_seconds: number;
+  completed_at: Date;
+};
 
 const TaskItem = ({
   id,
@@ -19,6 +27,17 @@ const TaskItem = ({
   onDelete: () => void;
 }) => {
   const [open, setOpen] = useState(false);
+  const [timerRecord, setTimerRecord] = useState<Date>();
+
+  useEffect(() => {
+    const getTimerRecord = async () => {
+      const response = await axios.get(
+        `http://localhost:8000/api/py/timer_records/${id}`,
+      );
+
+      setTimerRecord(response.data);
+    };
+  }, []);
   return (
     <li className="list-row items-center">
       <div
@@ -62,6 +81,8 @@ const TaskItem = ({
           </button>
         </label>
       </fieldset>
+      {/* add a time records to the completed task */}
+      {/* the issue with the last deleted task */}
     </li>
   );
 };
