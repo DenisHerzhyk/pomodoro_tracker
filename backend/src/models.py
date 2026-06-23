@@ -17,7 +17,7 @@ class TimerRecord(SQLModel, table=True):
         foreign_key="task.id"
     )
     mode: str
-    working_time: int
-    break_time: int
+    duration_seconds: int
+    completed_at:datetime = Field(default_factory=datetime.utcnow)
 
 

@@ -7,19 +7,14 @@ import TaskList from "./components/TaskList";
 const modes = ["pomodoro", "shortBreak", "longBreak"];
 type Mode = (typeof modes)[number];
 
-interface Tasks {}
 const Home = () => {
   const [totalWorkSeconds, setTotalWorkSeconds] = useState(0);
   const [totalBreakSeconds, setTotalBreakSeconds] = useState(0);
-  const [totalSeconds, setTotalSeconds] = useState(0);
+  const [resetSignal, setResetSignal] = useState(0);
   const [mode, setMode] = useState<Mode>("pomodoro");
 
-  useEffect(() => {
-    mode === "pomodoro"
-      ? setTotalSeconds(totalWorkSeconds)
-      : setTotalSeconds(totalBreakSeconds);
-  }, [mode]);
-  const handleSubmit = () => {};
+  const totalSeconds =
+    mode === "pomodoro" ? totalWorkSeconds : totalBreakSeconds;
   return (
     <div className="h-screen w-screen px-12 flex flex-col items-center">
       <h1 className="text-center text-3xl font-extrabold w-full mt-30">
@@ -32,7 +27,17 @@ const Home = () => {
           setMode={setMode}
           mode={mode}
         />
-        <TaskList totalSeconds={totalSeconds} mode={mode} />
+        <TaskList
+          onWorkSecondsUpdate={setTotalWorkSeconds}
+          onBreakSecondsUpdate={setTotalBreakSeconds}
+          onReset={() => {
+            setResetSignal((s) => s + 1);
+            setTotalWorkSeconds(0);
+            setTotalBreakSeconds(0);
+          }}
+          totalSeconds={totalSeconds}
+          mode={mode}
+        />
       </div>
     </div>
   );

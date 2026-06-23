@@ -1,40 +1,67 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import axios from "axios";
-import { getAllCreatedTasks } from "./services/task/getAllIncompleteTasksService";
 
 const Timer = ({
   onWorkSecondsUpdate,
   onBreakSecondsUpdate,
+  resetSignal,
   setMode,
   mode,
 }) => {
   const [seconds, setSeconds] = useState(60 * 25);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const secondsRef = useRef(60 * 25);
+  const hasSavedRef = useRef(false);
 
   useEffect(() => {
-    if (minutes === 0 && secs === 0) {
-      mode === "pomodoro"
-        ? onWorkSecondsUpdate((prev) => prev + 60 * 25)
-        : mode === "shortBreak"
-          ? onBreakSecondsUpdate((prev) => prev + 60 * 5)
-          : onBreakSecondsUpdate((prev) => prev + 60 * 15);
+    if (resetSignal === 0) return;
+    secondsRef.current = 60 * 25;
+    setSeconds(60 * 25);
+    hasSavedRef.current = false;
+    setIsRunning(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-  }, []);
+  }, [resetSignal]);
+
+  const stopAndSaveTimer = () => {
+    if (!intervalRef.current || hasSavedRef.current) return;
+    const initialTime =
+      mode === "pomodoro" ? 60 * 25 : mode === "shortBreak" ? 60 * 5 : 60 * 15;
+    const elapsed = initialTime - secondsRef.current;
+
+    console.log(
+      "stopAndSaveTimer called, isRunning:",
+      isRunning,
+      "hasSaved:",
+      hasSavedRef.current,
+      "elapsed:",
+      elapsed,
+    );
+
+    if (!isRunning || hasSavedRef.current || elapsed <= 0) return;
+    hasSavedRef.current = true;
+
+    if (mode === "pomodoro") {
+      onWorkSecondsUpdate(elapsed);
+    } else {
+      onBreakSecondsUpdate(elapsed);
+    }
+
+    setIsRunning(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
   const handlePomodoro = () => {
-    if (isRunning && ["shortBeak", "longBreak"].includes(mode)) {
-      if (mode === "shortBreak")
-        onBreakSecondsUpdate((prev) => prev + (60 * 5 - seconds));
-      else {
-        onBreakSecondsUpdate((prev) => prev + (60 * 15 - seconds));
-      }
-    }
-
     setMode("pomodoro");
     setSeconds(60 * 25);
+    secondsRef.current = 60 * 25;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -42,13 +69,10 @@ const Timer = ({
     }
   };
   const handleShortBreak = async () => {
-    if (isRunning && mode === "pomodoro") {
-      const elapsed = 60 * 25 - seconds;
-      onWorkSecondsUpdate((prev) => prev + elapsed);
-    }
-
+    stopAndSaveTimer();
     setMode("shortBreak");
     setSeconds(60 * 5);
+    secondsRef.current = 60 * 5;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -56,13 +80,10 @@ const Timer = ({
     }
   };
   const handleLongBreak = async () => {
-    if (isRunning && mode === "pomodoro") {
-      const elapsed = 60 * 25 - seconds;
-      onWorkSecondsUpdate((prev) => prev + elapsed);
-    }
-
+    stopAndSaveTimer();
     setMode("longBreak");
     setSeconds(60 * 15);
+    secondsRef.current = 60 * 15;
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -71,22 +92,36 @@ const Timer = ({
   };
   const startTimer = () => {
     if (intervalRef.current) return;
-
+    // Reset timer to initial value for current mode before starting
+    const initialTime =
+      mode === "pomodoro"
+        ? 60 * 25
+        : mode === "shortBreak"
+          ? 60 * 5
+          : mode === "longBreak"
+            ? 60 * 15
+            : 60 * 1; // fallback to 1 minute for safety
+    secondsRef.current = initialTime;
+    setSeconds(initialTime);
+    hasSavedRef.current = false;
     setIsRunning(true);
     intervalRef.current = setInterval(() => {
       setSeconds((prev) => {
-        if (prev <= 1) {
+        const next = prev <= 1 ? 0 : prev - 1;
+        secondsRef.current = next;
+        if (next === 0) {
           clearInterval(intervalRef.current!);
           intervalRef.current = null;
           setIsRunning(false);
-          return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
   };
 
-  const resumeTimer = () => {
+  const stopTimer = () => {
+    if (!intervalRef.current) return;
+    stopAndSaveTimer();
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -129,7 +164,6 @@ const Timer = ({
             onClick={handleShortBreak}
             className={`${mode === "shortBreak" ? "bg-[#33373E]" : ""} px-4 py-2`}
           >
-            {" "}
             Short Break
           </button>
         </li>
@@ -146,17 +180,21 @@ const Timer = ({
         {minutes}:{secs.toString().padStart(2, "0")}
       </div>
       <div className="buttons w-full flex flex-row gap-4 text-lg mt-16">
-        <button
-          className={`${isRunning ? "btn btn-info" : "btn btn-success"} ${isRunning ? "w-1/2" : "w-full"} py-6 `}
-          onClick={isRunning ? resumeTimer : startTimer}
-        >
-          {isRunning ? "RESUME" : "START"}
-        </button>
-        {isRunning && (
+        {isRunning ? (
+          <button className={`btn btn-error w-1/2 py-6 `} onClick={stopTimer}>
+            STOP
+          </button>
+        ) : (
           <button
-            className="btn btn-neutral  w-1/2 py-6"
-            onClick={restartTimer}
+            className={`btn btn-success w-full py-6`}
+            onClick={startTimer}
           >
+            START
+          </button>
+        )}
+
+        {isRunning && (
+          <button className="btn btn-neutral w-1/2 py-6" onClick={restartTimer}>
             RESTART
           </button>
         )}

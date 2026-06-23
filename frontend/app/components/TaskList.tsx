@@ -1,5 +1,6 @@
 "use client";
 
+import { toast } from "react-toastify";
 import React, { useEffect, useRef, useState } from "react";
 import TaskItem from "./task/TaskItem";
 import { CirclePlus } from "lucide-react";
@@ -9,13 +10,20 @@ import { getAllCreatedTasks } from "./services/task/getAllIncompleteTasksService
 import { getAllCompleteTasks } from "./services/task/getAllCompleteTasksService";
 import { handleTaskDelete } from "./services/task/taskDeleteService";
 
-const TaskList = ({ totalWorkSeconds, totalBreakSeconds, totalSeconds }) => {
+const TaskList = ({
+  onWorkSecondsUpdate,
+  onBreakSecondsUpdate,
+  onReset,
+  totalSeconds,
+  mode,
+}) => {
   const [expandDescr, setExpandDesk] = useState(false);
   const [incompTasks, setIncompTasks] = useState([]);
   const [compTasks, setCompTasks] = useState([]);
   const [taskTitle, setTaskTitle] = useState<string | null>(null);
   const [taskNote, setTaskNote] = useState<string | null>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const toggleInProgressRef = useRef(false);
 
   useEffect(() => {
     if (!expandDescr) return;
@@ -37,25 +45,43 @@ const TaskList = ({ totalWorkSeconds, totalBreakSeconds, totalSeconds }) => {
     getAllCompleteTasks(setCompTasks);
   }, []);
 
-  const handleToggleComplete = async (id: number) => {
-    try {
-      const response = await axios.get(
-        `http://localhost:8000/api/py/task/${id}`,
-        {
-          withCredentials: true,
-        },
-      );
-      const data = response.data;
-      await axios.patch(`http://localhost:8000/api/py/task/${id}`, {
-        id: id,
-        is_completed: !data.is_completed,
-        totalSeconds,
-      });
+  const handleToggleComplete = async (
+    id: number,
+    isCurrentlyCompleted: boolean,
+  ) => {
+    if (toggleInProgressRef.current) {
+      return;
+    }
+    toggleInProgressRef.current = true;
 
+    try {
+      if (!isCurrentlyCompleted && (totalSeconds === 0 || !mode)) {
+        toast.error("Start Pomodoro before completing task");
+        return;
+      }
+
+      console.log(
+        "totalSeconds at toggle:",
+        totalSeconds,
+        "isCurrentlyCompleted:",
+        isCurrentlyCompleted,
+      );
+
+      await axios.patch(`http://localhost:8000/api/py/task/${id}`, null, {
+        params: {
+          totalSeconds,
+          mode,
+        },
+        withCredentials: true,
+      });
+      onWorkSecondsUpdate(0);
+      onBreakSecondsUpdate(0);
       getAllCreatedTasks(setIncompTasks);
       getAllCompleteTasks(setCompTasks);
     } catch (err) {
       console.error("Failed to find or update the task: ", err);
+    } finally {
+      toggleInProgressRef.current = false;
     }
   };
 
