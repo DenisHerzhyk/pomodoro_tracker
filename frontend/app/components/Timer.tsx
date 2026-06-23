@@ -33,15 +33,6 @@ const Timer = ({
       mode === "pomodoro" ? 60 * 25 : mode === "shortBreak" ? 60 * 5 : 60 * 15;
     const elapsed = initialTime - secondsRef.current;
 
-    console.log(
-      "stopAndSaveTimer called, isRunning:",
-      isRunning,
-      "hasSaved:",
-      hasSavedRef.current,
-      "elapsed:",
-      elapsed,
-    );
-
     if (!isRunning || hasSavedRef.current || elapsed <= 0) return;
     hasSavedRef.current = true;
 

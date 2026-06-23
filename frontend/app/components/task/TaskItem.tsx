@@ -27,7 +27,6 @@ const TaskItem = ({
   onDelete: () => void;
 }) => {
   const [open, setOpen] = useState(false);
-  const [timersRecord, setTimersRecord] = useState<TimerRecord[]>();
   const [calcTimer, setCalcTimer] = useState(0);
   const [calcBreakTime, setCalcBreakTime] = useState(0);
 
@@ -38,7 +37,6 @@ const TaskItem = ({
         { withCredentials: true },
       );
       const records: TimerRecord[] = response.data;
-      setTimersRecord(records);
 
       const pomodoro = records
         .filter((tr) => tr.mode === "pomodoro")
@@ -96,8 +94,6 @@ const TaskItem = ({
           </button>
         </label>
       </fieldset>
-      {/* add a time records to the completed task */}
-      {/* the issue with the last deleted task */}
       {is_completed && (
         <div className="w-full mt-3 flex flex-row gap-4 text-sm text-gray-400 border-t border-gray-600 pt-3">
           <div className="flex items-center gap-1">

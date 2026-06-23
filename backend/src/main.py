@@ -62,7 +62,9 @@ async def delete_task(task_id: int, session: SessionDep) -> dict[str, bool]:
             status_code=404, detail=f"Task '${task_id}' was not found"
         )
 
-    records = session.exec(select(TimerRecord).where(TimerRecord.task_id == task_id)).all()
+    records = session.exec(
+        select(TimerRecord).where(TimerRecord.task_id == task_id)
+    ).all()
 
     for record in records:
         session.delete(record)
@@ -83,7 +85,12 @@ async def create_task(task: Task, session: SessionDep) -> Task:
 
 # toggle task
 @app.patch("/api/py/task/{task_id}")
-async def toggle_task(task_id: int, session: SessionDep, totalSeconds: int = Query(default=0), mode: str = Query(default=""),) -> dict:
+async def toggle_task(
+    task_id: int,
+    session: SessionDep,
+    totalSeconds: int = Query(default=0),
+    mode: str = Query(default=""),
+) -> dict:
     task = session.get(Task, task_id)
     if not task:
         raise HTTPException(
@@ -96,7 +103,9 @@ async def toggle_task(task_id: int, session: SessionDep, totalSeconds: int = Que
 
     tr = None
     if was_incomplete and totalSeconds > 0 and mode:
-        tr = TimerRecord(task_id=task_id, mode=mode, duration_seconds=totalSeconds)
+        tr = TimerRecord(
+            task_id=task_id, mode=mode, duration_seconds=totalSeconds
+        )
         session.add(tr)
 
     session.commit()
@@ -108,7 +117,9 @@ async def toggle_task(task_id: int, session: SessionDep, totalSeconds: int = Que
 
 
 @app.get("/api/py/timer_records/{task_id}")
-async def get_timer_records(task_id: int, session: SessionDep) -> List[TimerRecord]:
+async def get_timer_records(
+    task_id: int, session: SessionDep
+) -> List[TimerRecord]:
     timer_records = session.exec(
         select(TimerRecord).where(TimerRecord.task_id == task_id)
     ).all()

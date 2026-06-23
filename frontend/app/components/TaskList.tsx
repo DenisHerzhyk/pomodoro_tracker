@@ -60,13 +60,6 @@ const TaskList = ({
         return;
       }
 
-      console.log(
-        "totalSeconds at toggle:",
-        totalSeconds,
-        "isCurrentlyCompleted:",
-        isCurrentlyCompleted,
-      );
-
       await axios.patch(`http://localhost:8000/api/py/task/${id}`, null, {
         params: {
           totalSeconds,
